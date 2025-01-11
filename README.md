@@ -1,5 +1,14 @@
 # Cyclistic-Bike-Share
 ---
+
+### Data Availability Notice
+
+Due to GitHub's file size limitations, it was not possible to upload the full dataset used in this project. The original dataset comprises **12 months of data**, totaling more than **1.2 GB**, with over **6 million rows** and **13 columns**. 
+
+As a result, only **5 months of data** are included in this repository, representing a subset of the original dataset. However, the complete dataset, along with detailed specifications of all 12 months used in this project, is referenced and processed within the R Markdown file (`Case_Study1.Rmd`). 
+
+A link to the original dataset and instructions on how to reproduce the analysis with the full dataset are provided in the R Markdown file.
+
 ## Project Overview
 This project is part of a Capstone assignment from Google’s Data Analytics Professional Certificate. The objective is to analyze user behavior data from Cyclistic, a bike-sharing company in Chicago, to identify differences between casual riders and annual members. The insights derived will help inform a marketing strategy aimed at converting casual riders into annual members.
 
