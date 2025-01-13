@@ -5,7 +5,7 @@
 
 Due to GitHub's file size limitations, it was not possible to upload the full dataset used in this project. The original dataset comprises **12 months of data**, totaling more than **1.2 GB**, with over **6 million rows** and **13 columns**. 
 
-As a result, only **5 months of data** are included in this repository, representing a subset of the original dataset. However, the complete dataset, along with detailed specifications of all [12 months](https://divvy-tripdata.s3.amazonaws.com/index.html) used in this project, is referenced and processed within the R Markdown file (`Case_Study1.Rmd`). 
+As a result, only **5 months of data** are included in this repository, representing a subset of the original dataset. However, the complete dataset, along with detailed specifications of all [12 months](https://divvy-tripdata.s3.amazonaws.com/index.html)(In this case we used, 202310 to 202409 "divvy-tripdata"), is referenced and processed within the R Markdown file (`Case_Study1.Rmd`). 
 
 A link to the original dataset and instructions on how to reproduce the analysis with the full dataset are provided in the R Markdown file **Prepare Step**.
 
