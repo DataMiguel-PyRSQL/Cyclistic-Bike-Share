@@ -1,1 +1,6 @@
 *.csv filter=lfs diff=lfs merge=lfs -text
+*.R linguist-detectable=true
+*.Rmd linguist-detectable=true
+*.Rproj linguist-detectable=true
+*.html linguist-detectable=false
+*.css linguist-detectable=false
