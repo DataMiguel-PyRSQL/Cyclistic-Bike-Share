@@ -1,0 +1,752 @@
+---
+title: "Case Study_1_Cyclistic"
+author: "Miguel Aldana"
+date: "2024-10-30"
+output:
+  html_document: default
+  pdf_document: default
+editor_options:
+  markdown:
+    wrap: 72
+---
+
+```{r setup, include=FALSE}
+# Opciones globales para el archivo .Rmd
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE) # Opciones para chunks
+options(repos = c(CRAN = "https://cloud.r-project.org")) # Mirror de CRAN
+library(ggplot2) # Cargar librerías necesarias
+library(dplyr)
+library(tidyverse)
+library(lubridate)
+library(geosphere)
+```
+
+## Scenario
+
+You are a junior data analyst working on the marketing analyst team at
+Cyclistic, a bike-share company in Chicago. The director of marketing
+believes the company’s future success depends on maximizing the number
+of annual memberships. Therefore, your team wants to understand how
+casual riders and annual members use Cyclistic bikes differently. From
+these insights, your team will design a new marketing strategy to
+convert casual riders into annual members. But first, Cyclistic
+executives must approve your recommendations, so they must be backed up
+with compelling data insights and professional data visualizations.
+
+## Ask
+
+Three questions will guide the future marketing program:
+
+1\. How do annual members and casual riders use Cyclistic bikes
+differently?
+
+2\. Why would casual riders buy Cyclistic annual memberships?
+
+3\. How can Cyclistic use digital media to influence casual riders to
+become members?
+
+#### Guiding Questions
+
+**What is the problem you are trying to solve?**
+
+How to convert casual riders into annual members.
+
+**How can your insights drive business decisions?**
+
+Understanding the differences in bike usage between casual riders and
+annual members. Such as patterns, preferences, trends, customer
+segmentation and service improvement.
+
+#### Key Tasks
+
+**Identify the business task**
+
+Understand how annual members and casual riders use Cyclistic bikes
+differently to improve our marketing strategy aimed to convert casual
+riders into annual members.
+
+**Consider key stakeholders**
+
+1\. Cyclistic marketing analytics team
+
+2\. Lily Moreno
+
+3\. Cyclistic executive team
+
+### Deliverable 1✔ 
+
+**Clear Statement of the Business Task**
+
+Analyze how Cyclistic's casual riders and annual members differ in their
+usage of the bike-share service.This analysis will identify patterns,
+preferences and trends to improve our marketing strategy aimed at
+converting casual riders into annual members. All this to increase
+Cyclistic's long-term revenue and customer retention.
+
+## Prepare
+
+[Download the previous 12
+months](https://divvy-tripdata.s3.amazonaws.com/index.html). *(In this
+case we use 12 months, 202310 to 202409 "divvy-tripdata")*
+
+Here the [License](https://divvybikes.com/data-license-agreement).
+
+#### Guiding Questions
+
+**Where is your data located?**
+
+The data is located in [Download Divvy trip history
+data](https://divvy-tripdata.s3.amazonaws.com/index.html), which is
+publicly available and provided by Motivate International Inc.
+
+**How is the data organized?**
+
+The data is organized as monthly .CSV files, each file contains
+information about individual trips done by Cyclistic's users, structured
+data that contains 13 columns.
+
+**Are there issues with bias or credibility in this data? Does your data
+ROCCC?**
+
+**Reliable:** Since the data is provided by the actual service operator
+(Motivate International Inc.) we can say that it's credible and
+accurate.
+
+**Original:** The data is originally collected from the company system.
+
+**Comprehensive:** The data provided cover essential data about trips
+details that will be helpful with the analysis.
+
+**Current:** The data is updated monthly so is relevant and not
+out-dated.
+
+**Cited:** The data is open source with the requirement to cite Motivate
+International Inc. who is the data provider.
+
+**How are you addressing licensing, privacy, security, and
+accessibility?**
+
+The data falls under [Divvy’s public
+license](https://divvybikes.com/data-license-agreement). The data has
+been anonymized and doesn't contain personal info or payments so there's
+not security risk at all, accessibility is via .CSV file format.
+
+**How did you verify the data’s integrity?**
+
+I verified data's integrity by checking consistency in column headers
+and data type in each column, outliers or missing values were identified
+and will be cleaned in the process stage.
+
+**How does it help you answer your question?**
+
+This data helps us to analyse differences about casual riders and annual
+members, such as bike types, traveled distance and trip duration.
+
+**Are there any problems with the data?**
+
+Missing values, wrong data types and maybe some outliers that need to be
+cleaned.
+
+#### Key Tasks
+
+**Download data and store it appropriately**✔
+
+```{r}
+library(dplyr)
+library(tidyverse)
+# Set a Relative Path and List all CSV files
+file_list <- list.files("data", pattern = "*.csv", full.names = TRUE) #data is the name of the file that contains the .csv documents.
+
+# Read and bind all files into one data frame
+combined_data <- file_list %>%
+  lapply(read.csv) %>%    # Read each file
+  bind_rows()             # Combine them into a single data frame
+```
+
+**Identify how it’s organized**✔
+
+```{r}
+# View the first few rows of the combined data
+head(combined_data)
+View(combined_data)
+```
+
+**Sort and filter the data**✔
+
+**Step 1 - Fixing data type and calculate trip duration before sorting**
+
+```{r Step 1}
+glimpse(combined_data)
+#1)_With glimpse we discovered that our started_at and ended_at data type is incorrect so we fix before sorting and filtering
+combined_data$started_at <- as.POSIXct(combined_data$started_at, format = "%Y-%m-%d %H:%M:%S")
+combined_data$ended_at <- as.POSIXct(combined_data$ended_at, format = "%Y-%m-%d %H:%M:%S")
+
+#Calculate trip time in minutes
+combined_data$trip_duration <- as.numeric(difftime(combined_data$ended_at, combined_data$started_at, units = "mins"))
+```
+
+**Step 2 - Sorting data**
+
+```{r}
+#2)_We sort our data arranging by our started_at column
+combined_data <- arrange(combined_data,started_at)
+```
+
+**Step 3 - Filtering data**
+
+```{r}
+#3)_We filter rows with start_station_id and end_station_id with missing values
+#3.1)_We noticed that we are not filtering properly because maybe the cells are "", not only na.
+#count rows with empty values or blank spaces to ensure 3.1)
+sum(combined_data$start_station_id == "" | combined_data$start_station_id == " ") 
+sum(combined_data$end_station_id == "" | combined_data$end_station_id == " ") 
+#Knowing that we have cells with empty values and blank spaces, we need to add this into the filter
+combined_data_sort_filter <-  combined_data %>% 
+  filter(!is.na(start_station_id) & start_station_id != "" & start_station_id != " ",
+         !is.na(end_station_id) & end_station_id != "" & end_station_id != " ")
+#Count if there're not any missing values left
+sum(combined_data_sort_filter$start_station_id == "" | combined_data_sort_filter$start_station_id == " ") 
+sum(combined_data_sort_filter$end_station_id == "" | combined_data_sort_filter$end_station_id == " ")
+
+#Now that we know that everything is ok, we can continue with our original name "combined_data"
+combined_data <- combined_data_sort_filter
+#With rm we remove the data frame that we are not using anymore
+rm(combined_data_sort_filter)
+```
+
+**Determine the credibility of the data**✔
+
+### Deliverable 2✔ 
+
+**A description of all data sources used**
+
+The description of all data sources used are on the guiding questions of
+this step and the R Chunk.
+
+## Process
+
+#### Guiding Questions
+
+**What tools are you choosing and why?**
+
+I am using R because we are using a large amount of data and this
+software let us work perfectly with it. Also, R provides packages like
+*dplyr*,*tidyr* and *ggplot2* for efficient data manipulation,
+visualization and analysis. Additionally, RStudio makes it easy to
+create reports and document my entire process with R Markdown.
+
+**Have you ensured the integrity of your data?**
+
+Yes, we did it on the **Prepare** step such as:
+
+-Verified that all datasets from the 12 months were successfully loaded
+and combined without any loss of information.
+
+-Checked inconsistencies between columns like start_station_id and
+end_station_id.
+
+-Ensured proper handling of missing values and removed rows where
+critical fields (e.g., station IDs) were empty.
+
+**What steps have you taken to ensure your data is clean?**
+
+The following cleaning steps were performed:
+
+-Converted date and time columns from character to datetime formats to
+enable proper sorting and analysis.
+
+-Removed rows with NA values in essential columns like start_station_id
+and end_station_id.
+
+-Filtered out erroneous data, such as trips with negative durations or
+outlier distances.
+
+**How can you verify that your data is clean and ready to analyze?**
+
+**-Missing values** addressed.
+
+**-Correct data types** for all columns.
+
+**-No duplicates** or invalid records.
+
+**-Logical consistency** in relationships.
+
+**-Consistent categories** for factors.
+
+**Have you documented your cleaning process so you can review and share
+those results?**
+
+Yes i did, i use notes on each parts of the code to document it.
+
+#### Key Tasks
+
+**Check your data for errors.**✔
+
+**Choose your tools.**✔
+
+**Transform your data so you can work with it effectively.**✔
+
+**Document the cleaning process.**✔
+
+### Deliverable 3✔ 
+
+**Documentation of any data cleansing or manipulation**
+
+We can see the documentation of the cleaning and data manipulation in
+the R Chunk.
+
+```{r}
+#Check for Missing Values
+# Summary of missing values
+colSums(is.na(combined_data))
+
+#Check Data Types
+# View data types
+str(combined_data)
+
+#Check for Duplicates
+# Count duplicates
+sum(duplicated(combined_data))
+# Remove duplicates
+combined_data <- combined_data[!duplicated(combined_data), ]
+#Count duplicates again to double check
+sum(duplicated(combined_data))
+
+#Check for Outliers and verify logical consistency
+# Summary of numerical columns
+summary(combined_data)
+# Remove Abnormal Trip_duration (Negative and more than 1440)
+combined_data <- combined_data %>% filter(trip_duration > 1 & trip_duration < 1440)
+# Summary again
+summary(combined_data)
+
+#Check for Inconsistent Categories (Typo)
+# Unique values in categorical columns
+unique(combined_data$rideable_type)
+unique(combined_data$member_casual)
+```
+
+## Analyze
+
+#### Guiding Questions
+
+**How should you organize your data to perform an analysis?**
+
+The data should be organized by key variables that allow for meaningful
+comparisons and aggregations.
+
+**Is your data properly formatted?**
+
+Yes, the data has been cleaned and formatted for analysis on previous
+steps and here.
+
+**What surprises did you discover in the data?**
+
+Similar bike preferences, Weekend peaks for casual riders, Trip duration
+contrast and that we only have unique id's in the ride_id column.
+
+**What trends or relationships did you find in the data?**
+
+-Trip duration: Casual riders have significantly longer trips than
+members, possibly due to leisure-oriented use.
+
+-Weekly patterns: Members use bikes more on weekdays, aligning with
+commuting purposes, while casual riders dominate on weekends.
+
+-Consistent distances: Both groups travel similar distances per trip,
+regardless of rider type. These relationships help segment user behavior
+and identify key areas for targeting marketing efforts.
+
+**How will these insights help you answer your business questions?**
+
+-Understanding usage patterns: By identifying when and how each group
+uses the service, marketing strategies can be tailored to their needs.
+
+-Improving member acquisition: Insights into casual riders' longer trips
+and weekend usage highlight opportunities to incentive membership
+through leisure-focused campaigns.
+
+-Enhancing customer retention: Knowing members' preference for weekday
+commuting can guide improvements in services and promotions aimed at
+enhancing their daily experience.
+
+#### Key Tasks
+
+**Aggregate your data to make it useful and accessible.**✔
+
+**Organize and format your data.**✔
+
+**Perform calculations.**✔
+
+**Identify trends and relationships.**✔
+
+```{r Install Needed Packages}
+library(geosphere)
+library(ggplot2)
+```
+
+```{r Column distance}
+#Adding new column with distance traveled
+combined_data$distance_km <- distHaversine(
+  matrix(c(combined_data$start_lng,combined_data$start_lat),ncol = 2),
+  matrix(c(combined_data$end_lng,combined_data$end_lat),ncol = 2)
+)/1000 #Converts m to km
+```
+
+```{r Grouping 1}
+#Aggregate data by rideable_type
+aggregated_data_rideable <- combined_data %>%
+  group_by(rideable_type) %>%
+  summarise(
+    avg_duration_mins = mean(trip_duration, na.rm = TRUE),
+    avg_distance_km = mean(distance_km, na.rm = TRUE),
+    total_rides = n()
+  )
+print(aggregated_data_rideable)
+```
+
+```{r Grouping 2}
+#Aggregate data by member_casual
+aggregated_data_member_casual <- combined_data %>%
+  group_by(member_casual) %>%
+  summarise(
+    avg_duration_mins = mean(trip_duration, na.rm = TRUE),
+    avg_distance_km = mean(distance_km, na.rm = TRUE),
+    total_rides = n(),
+    classic_bike = sum(rideable_type == "classic_bike", na.rm = TRUE),
+    electric_bike = sum(rideable_type == "electric_bike", na.rm = TRUE),
+    electric_scooter = sum(rideable_type == "electric_scooter", na.rm = TRUE)
+     )
+print(aggregated_data_member_casual)
+```
+
+```{r Tranform to Graph 1}
+# Transform to a long format to viz the graph easier
+aggregated_long <- aggregated_data_member_casual %>%
+  pivot_longer(cols = c(classic_bike, electric_bike, electric_scooter), 
+               names_to = "bike_type", 
+               values_to = "count")
+```
+
+```{r Bar Graph Rider Type, Bike type and Number of rides (Graph 1)}
+# Create a bar graph
+ggplot(aggregated_long, aes(x = member_casual, y = count, fill = bike_type)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(
+    title = "Comparison of Bike Usage by Member and Casual Riders (Graph 1)",
+    x = "Rider Type",
+    y = "Number of Rides",
+    fill = "Bike Type"
+  ) +
+  theme_minimal()
+```
+
+```{r Tranform to Graph 2}
+# Create a bar graph for a better look of average trip duration and distance between casual - member
+aggregated_data_duration_distance_long <- aggregated_data_member_casual %>%
+  pivot_longer(cols = c(avg_duration_mins, avg_distance_km), 
+               names_to = "metric", 
+               values_to = "value")
+```
+
+```{r Bar Graph Distance, Duration and Rider Type (Graph 2)}
+ggplot(aggregated_data_duration_distance_long, aes(x = member_casual, y = value, fill = member_casual)) +
+  geom_bar(stat = "identity", position = "dodge") +  # Create the bar for both metrics
+  facet_wrap(~metric, scales = "free_y") +  # Facet metrics
+  labs(
+    title = "Average Trip Duration and Distance by Member Type (Graph 2)",
+    x = "Rider Type",
+    y = "Values"
+  ) +
+  theme_minimal() +
+  scale_fill_manual(values = c("casual" = "blue", "member" = "green"))
+```
+
+```{r Grouping 3}
+# Group by day of the week and type of user
+daily_usage <- combined_data %>%
+  mutate(day_of_week = weekdays(started_at)) %>%
+  group_by(member_casual, day_of_week) %>%
+  summarise(total_rides = n(), .groups = "drop")
+```
+
+```{r Line graph day of the week and rider type (Graph 3)}
+# Create a line graph to compare
+ggplot(daily_usage, aes(x = day_of_week, y = total_rides, color = member_casual, group = member_casual)) +
+  geom_line(size = 1) +
+  geom_point(size = 2) +
+  labs(
+    title = "Cyclistic Bike Usage by Day of the Week (Graph 3)",
+    x = "Day of the Week",
+    y = "Number of Rides",
+    color = "Rider Type"
+  ) +
+  theme_minimal()
+```
+
+### Deliverable 4✔ 
+
+**A summary of my analysis**
+
+Initially, we can observe that members outnumber casual riders by 44.7%.
+To make meaningful comparisons between the rider types, it is essential
+to analyze the duration of each trip, the distance traveled, and the
+type of bike used. From this analysis (as seen in Graph 1 and 2), we
+found that both types of customers are quite similar. However, a
+significant difference emerged in the duration of their trips. Although
+both groups travel similar distances on average and prefer the same type
+of bike, members' trips are almost 50% shorter in duration. This could
+be because members use the bikes more regularly, while casual riders do
+not.
+
+To delve deeper into this hypothesis, we analyzed bike usage by day of
+the week (Graph 3). This confirmed that members use the bikes more
+frequently than casual riders. Casual riders exhibit higher usage during
+weekends, whereas members primarily use the bikes on weekdays. This
+suggests that members may use the bikes for commuting to work or school,
+while casual riders tend to use them for leisure activities on weekends.
+
+## Share
+
+#### Guiding Questions
+
+**Were you able to answer the question of how annual members and casual
+riders use cycling bikes differently?**
+
+Yes, the analysis provided clear insights into how annual members and
+casual riders differ in their usage patterns:
+
+✔ Duration ✔ Timing ✔ Purpose
+
+**What story does your data tell?**
+
+The data tells the story of two distinct customer segments:
+
+Members: Efficient and frequent users who rely on bikes for short,
+consistent trips during weekdays, likely for commuting purposes.
+
+Casual Riders: Sporadic users who prefer longer trips on weekends,
+indicating a recreational use of the service. This dual behavior
+reflects different needs and motivations for using the service, guiding
+Cyclistic’s marketing and operational strategies.
+
+**How do your findings relate to your original question?**
+
+They explain how the two groups differ in terms of trip duration,
+timing, and purpose.
+
+**Who is your audience? What is the best way to communicate with them?**
+
+**Audience:** Cyclistic’s executive and marketing teams.
+
+-Use simple and impact visualizations that clearly illustrate
+differences (for example, bar charts, line graphs).
+
+-Summarize insights with key statistics (for example, average trip
+duration, percentage of rides on weekends).
+
+**Can data visualization help you share your findings?**
+
+Absolutely. Data visualizations make the differences between member and
+casual rider behaviors easy to understand. I used the following
+visualizations:
+
+✔ Bar chart ✔ Line graph ✔ Stacked bar chart
+
+**Is your presentation accessible to your audience?**
+
+Yes, i am using Labels, legends, titles, highlited colors and
+alternative text description for visuals.
+
+#### Key Tasks
+
+**Determine the best way to share your findings.**✔
+
+**Create effective data visualizations.**✔
+
+**Present your findings.**✔
+
+**Make sure your work is accessible.**✔
+
+### Deliverable 5✔ 
+
+**Supporting visualizations and key findings**
+
+Member and Casual Riders Behaviors based on Avg duration, Avg distance
+and type of bike.
+
+```{r Comparison table}
+print(aggregated_data_member_casual)
+```
+
+We can notice a similar bike type usage between casual and members.
+
+```{r}
+ggplot(aggregated_long, aes(x = member_casual, y = count, fill = bike_type)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(
+    title = "Comparison of Bike Usage by Member and Casual Riders (Graph 1)",
+    x = "Rider Type",
+    y = "Number of Rides",
+    fill = "Bike Type"
+  ) +
+  theme_minimal()
+```
+
+Similar distance, lower duration (almost 50% lower) for members.
+
+```{r}
+ggplot(aggregated_data_duration_distance_long, aes(x = member_casual, y = value, fill = member_casual)) +
+  geom_bar(stat = "identity", position = "dodge") +  # Create the bar for both metrics
+  facet_wrap(~metric, scales = "free_y") +  # Facet metrics
+  labs(
+    title = "Average Trip Duration and Distance by Member Type (Graph 2)",
+    x = "Rider Type",
+    y = "Values"
+  ) +
+  theme_minimal() +
+  scale_fill_manual(values = c("casual" = "blue", "member" = "green"))
+```
+
+Casual riders prefer bikes for recreational activities (Weekends spikes)
+and Members for commuting purpose (Weekdays Spikes)
+
+```{r}
+ggplot(daily_usage, aes(x = day_of_week, y = total_rides, color = member_casual, group = member_casual)) +
+  geom_line(size = 1) +
+  geom_point(size = 2) +
+  labs(
+    title = "Cyclistic Bike Usage by Day of the Week (Graph 3)",
+    x = "Day of the Week",
+    y = "Number of Rides",
+    color = "Rider Type"
+  ) +
+  theme_minimal()
+```
+
+## Act
+
+#### Guiding Questions
+
+**What is your final conclusion based on your analysis?**
+
+The analysis reveals that while annual members and casual riders share
+similar preferences in bike types and distances traveled, their usage
+patterns are distinctly different. Members tend to use the service for
+shorter, more frequent trips, likely for commuting purposes during
+weekdays. In contrast, casual riders favor longer trips primarily on
+weekends, suggesting leisure-oriented use. This distinction underscores
+the potential for targeted strategies to convert casual riders into
+members by emphasizing membership benefits that cater to their unique
+usage patterns.
+
+**How could your team and company apply your insights?**
+
+The insights can be applied in several ways:
+
+**Targeted Marketing:** Launch personalized campaigns that emphasize the
+benefits of membership for casual riders, focusing on cost savings for
+frequent weekend use, exclusive perks, and flexibility tailored to
+leisure activities.
+
+**Incentivized Trial Memberships:** Offer limited-time trial memberships
+at a reduced rate or even free for a short period. This allows casual
+riders to experience the benefits of being a member without a long-term
+commitment, increasing the likelihood of conversion.
+
+**Weekend Membership Plans:** Introduce a special weekend-focused
+membership option with lower fees but benefits designed for leisure
+users. This strategy caters directly to casual riders who primarily use
+the service on weekends.(Just in case option)
+
+**Retention Strategies:** Implement loyalty programs and exclusive
+benefits for members, such as discounts on extended rides or priority
+access to bikes during peak times, ensuring they see continued value in
+maintaining their membership.This aimed at both current members and
+newly converted casual riders.
+
+**What next steps would you or your stakeholders take based on your
+findings?**
+
+**Evaluate the Feasibility of Proposed Strategies:** Conduct a detailed
+analysis of the targeted marketing campaigns, trial memberships, and
+weekend-focused plans to assess their viability. This includes
+evaluating the potential costs, required resources, and the expected
+return on investment (ROI).
+
+**Cost-Benefit Analysis:** Calculate the projected costs for
+implementing each strategy, such as marketing expenses, discounts, and
+administrative costs. Compare these costs against the anticipated
+benefits, including increased membership conversions, higher retention
+rates, and overall revenue growth.
+
+**Develop an Implementation Timeline:** Create a step-by-step timeline
+for rolling out the proposed strategies. This should include short-term
+actions like launching trial memberships and longer-term initiatives
+such as introducing new membership plans. Set clear milestones and
+deadlines for each phase.
+
+**Monitor and Adjust:** Once implemented, continuously track the
+performance of each strategy. Use key performance indicators (KPIs) such
+as membership conversion rates, usage patterns, and customer feedback to
+assess effectiveness. Be prepared to adjust strategies based on
+real-time data to optimize results.
+
+**Is there additional data you could use to expand on your findings?**
+
+**Customer Satisfaction and Feedback Surveys:** Conduct multiple-choice
+surveys to gather structured feedback from both casual riders and
+members. This will help identify specific areas where the company excels
+or needs improvement, providing actionable insights to enhance customer
+experience. Understanding what casual riders value most can inform the
+design of targeted membership benefits.
+
+**User Journey Data:** Collect data on the complete user journey, from
+app interactions to booking and ride completion. Analyzing these
+touchpoints can reveal pain points or friction in the user experience,
+allowing for targeted improvements that enhance convenience and
+satisfaction.
+
+### Deliverable 6✔ 
+
+**My top three recommendations based on my analysis**
+
+#### 1. Targeted Marketing Campaigns
+
+Launch personalized marketing campaigns focused on converting casual
+riders into members by highlighting.
+
+✔**Cost savings** for frequent weekend use.
+
+✔**Exclusive perks** tailored to leisure activities.
+
+✔**Flexibility** in membership options, especially for weekend users.
+These campaigns should emphasize the benefits casual riders can gain
+from membership, addressing their specific usage patterns and
+encouraging them to see the value in becoming regular members.
+
+#### 2. Incentivized Trial Memberships
+
+Introduce limited-time trial memberships at a reduced rate or free for a
+short period. This allows casual riders to:
+
+✔**Experience the benefits** of membership without long-term commitment.
+
+✔Increase the **likelihood** of conversion by showcasing the convenience
+and perks of being a member. This strategy effectively lowers the
+barrier to entry, giving casual riders a risk-free opportunity to
+explore the advantages of membership.
+
+#### 3. Customer Satisfaction and Feedback Mechanism
+
+Implement structured, multiple-choice customer satisfaction surveys to:
+
+✔Gather **insights on casual riders' preferences** and pain points.
+
+✔Identify areas where the company excels or needs improvement, ensuring
+that enhancements are **data-driven**.
+
+✔Use feedback to refine membership benefits, ensuring they align with
+what casual riders value most. By continuously collecting and analyzing
+customer feedback, the company can make **informed decisions** to
+improve user satisfaction and **retention**.
